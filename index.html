@@ -18,6 +18,9 @@
         #status {
             margin-top: 20px;
         }
+        #downloads {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -42,6 +45,9 @@
             // Limpa os links de download anteriores
             downloadsContainer.innerHTML = '';
 
+            // Usa a Web Audio API para decodificar o arquivo OGG
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
             // Itera sobre todos os arquivos
             for (let i = 0; i < files.length; i++) {
                 const input = files[i];
@@ -49,21 +55,31 @@
 
                 // Cria um leitor de arquivo
                 const reader = new FileReader();
-                reader.onload = function(event) {
+                reader.onload = async function(event) {
                     const audioData = event.target.result;
-                    const lame = new lamejs.Mp3Encoder(1, 44100, 128); // Encoder mono, 44100Hz, 128 kbps
-                    const buffer = lame.encodeBuffer(new Uint8Array(audioData));
-                    const mp3Data = lame.flush();
-                    const mp3Blob = new Blob([new Uint8Array([...buffer, ...mp3Data])], { type: 'audio/mp3' });
-                    const url = URL.createObjectURL(mp3Blob);
 
-                    // Cria o link de download para o arquivo convertido
-                    const downloadLink = document.createElement('a');
-                    downloadLink.href = url;
-                    downloadLink.download = `${fileName}.mp3`;
-                    downloadLink.textContent = `Baixar ${fileName}.mp3`;
-                    downloadsContainer.appendChild(downloadLink);
-                    downloadsContainer.appendChild(document.createElement('br'));
+                    try {
+                        // Decodifica o áudio usando a Web Audio API
+                        const decodedAudio = await audioContext.decodeAudioData(audioData);
+
+                        // Codificando para MP3 com LAME.js
+                        const lame = new lamejs.Mp3Encoder(1, decodedAudio.sampleRate, 128); // Encoder mono, 44100Hz, 128 kbps
+                        const buffer = lame.encodeBuffer(decodedAudio.getChannelData(0)); // Apenas o primeiro canal (mono)
+                        const mp3Data = lame.flush();
+                        const mp3Blob = new Blob([new Uint8Array([...buffer, ...mp3Data])], { type: 'audio/mp3' });
+                        const url = URL.createObjectURL(mp3Blob);
+
+                        // Cria o link de download para o arquivo convertido
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = url;
+                        downloadLink.download = `${fileName}.mp3`;
+                        downloadLink.textContent = `Baixar ${fileName}.mp3`;
+                        downloadsContainer.appendChild(downloadLink);
+                        downloadsContainer.appendChild(document.createElement('br'));
+                    } catch (error) {
+                        statusText.textContent = `Erro ao decodificar o arquivo: ${fileName}`;
+                        console.error('Erro ao decodificar:', error);
+                    }
                 };
 
                 reader.readAsArrayBuffer(input);
