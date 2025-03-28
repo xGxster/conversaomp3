@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversor OGG para MP3</title>
+    <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.0/lame.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        #download {
+            display: none;
+            margin-top: 20px;
+        }
+        #status {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Conversor de Áudio: OGG para MP3</h1>
+    <input type="file" id="fileInput" accept="audio/ogg" multiple>
+    <button onclick="convertAudio()">Converter</button>
+    <div id="status"></div>
+    <div id="downloads"></div>
+
+    <script>
+        async function convertAudio() {
+            const files = document.getElementById('fileInput').files;
+            if (files.length === 0) {
+                alert('Selecione ao menos um arquivo OGG!');
+                return;
+            }
+
+            const statusText = document.getElementById('status');
+            const downloadsContainer = document.getElementById('downloads');
+            statusText.textContent = "Convertendo arquivos...";
+
+            // Limpa os links de download anteriores
+            downloadsContainer.innerHTML = '';
+
+            // Itera sobre todos os arquivos
+            for (let i = 0; i < files.length; i++) {
+                const input = files[i];
+                const fileName = input.name.split('.')[0]; // Pega o nome do arquivo sem a extensão
+
+                // Cria um leitor de arquivo
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const audioData = event.target.result;
+                    const lame = new lamejs.Mp3Encoder(1, 44100, 128); // Encoder mono, 44100Hz, 128 kbps
+                    const buffer = lame.encodeBuffer(new Uint8Array(audioData));
+                    const mp3Data = lame.flush();
+                    const mp3Blob = new Blob([new Uint8Array([...buffer, ...mp3Data])], { type: 'audio/mp3' });
+                    const url = URL.createObjectURL(mp3Blob);
+
+                    // Cria o link de download para o arquivo convertido
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = url;
+                    downloadLink.download = `${fileName}.mp3`;
+                    downloadLink.textContent = `Baixar ${fileName}.mp3`;
+                    downloadsContainer.appendChild(downloadLink);
+                    downloadsContainer.appendChild(document.createElement('br'));
+                };
+
+                reader.readAsArrayBuffer(input);
+            }
+
+            statusText.textContent = "Conversão concluída!";
+        }
+    </script>
+</body>
+</html>
